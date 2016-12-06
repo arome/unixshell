@@ -1,0 +1,71 @@
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{url}
+
+\title{Travail pratique \#1 - IFT-2245}
+\author{Ilia Chaikovskiy et Omar Halbouni}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+Le travail qui nous a été demandé est l’implémentation d’un Shell UNIX en langage C. Une phrase qui est courte, mais qui cache en elle une semaine de travail au minimum pour une personne pas familière avec ces concepts. 
+
+\subsection{Installation et familiarisation}
+
+Il nous a fallu premièrement installer Linux, qui n’est pas si simple que ça. Nous parlons de problèmes dans la détection de certains pilotes, de paramètres à changer dans les BIOS, de la virtualisation qui semble très lente même avec 4GB de RAM alloués, etc. C’est peut-être un jeu d’enfant pour quelqu’un qui travaille régulièrement avec ce système, mais prend effectivement un moment pour s’y retrouver pour un autre qui y est confronté pour la première fois.  Une fois Linux installé, il a fallu comprendre comment utiliser le Shell et ses différentes fonctionnalités. Ça n’a pas été très difficile, mais a tout de même pris un certain moment. Ensuite fallait comprendre le standard POSIX, d'abord ce que ça voulait dire, puis les différentes bibliothèques qui pourrait nous servir pour notre travail. Une grosse partie du travail était aussi l’étude du langage C. Une question que nous devions inévitablement nous poser était pourquoi en C? Ce n’est pas un langage que nous avons vu lors de notre cheminement universitaire et pourtant ce travail en requiert une connaissance plus ou moins approfondie. La seule place où nous l’avons abordé brièvement est dans le cours prérequis de concepts de language de programmation. L'étude des pointeurs et comment les variables étaient représentées en mémoire était cruciale pour la réalisation de ce travail puisque ça nécessitait beaucoup de manipulation de tableau de pointeur sur des chaînes de caractères.
+
+\subsection{Aide du cours}
+Il faut aussi mentionner que nous nous attendions à ce qu'il y ai un certain lien entre la matière présentée en cours et ce que ce travail nous demandait, pourtant il a été donné avant même que le cours commence et nous a été que brièvement présenté par le démonstrateur une dizaine de jours avant la remise. Ce qui a été vu en cours n’a aidé d'aucune façon la compréhension de la tâche à effectuer. Néanmoins, nous avons trouvé le projet très intéressant et complet, touchant à une multitude de concepts à lier ensemble. Bref, un grand défi comme à chaque fois lors d’un cours avec M. Monnier.
+
+\section{Codage}
+Nous avons longtemps tourné autour du pot avant de commencer à écrire le code, faute de ne pas savoir par où commencer. Avant de réaliser quelque chose, il faut réussir à l’imaginer. 
+
+\subsection{Fondation de notre programme}
+
+Nous sommes tombés sur le code de Stephen Brennan  (\url{http://stephen-brennan.com/2015/01/16/write-a-shell-in-c/}), duquel nous nous sommes inspirés pour la structure initiale que nous avons ensuite retravaillée plusieurs fois pour être en mesure de l’adapter à notre situation. Son article nous a grandement aidé à un moment crucial, parce qu’il nous a permis de bâtir la fondation de notre programme. Par fondation, on entend :
+\subsubsection{Boucle principale}
+Comment organiser la boucle principale qui nous permet de rouler le programme jusqu’à ce que l'usager rentre "exit" en entrée. Nous l’avons fait à l’aide d’une structure do while (continuer), où continuer est une variable mise à 0 lors de l’entrée "exit" et mise à 1 lors des autres types d’entrées. C'est ce qui a permis au programme d’exécuter des commandes une à la suite de l’autre jusqu’à ce que l’utilisateur décide de le quitter.
+
+\subsubsection{Traitement de l'input} 
+Comment traiter l’entrée de l’utilisateur. C’est à ce moment que nous avons compris que C n’était pas un langage que nous allions aimer. Une commande telle que .split() en Python nous a demandé littéralement autour de 40 lignes de code! De plus, il a fallu comprendre la gestion de la mémoire avec malloc, realloc et free, qui nous a causée des problèmes (segmentation fault) tout au long du travail et que nous avons minimisée au maximum. En fait, nous ne pouvons pas dire que nous maîtrisions totalement cette gestion, mais pour être tout à fait franc nous ne savons pas vraiment pourquoi ça ne marchait pas et faute de temps nous avons décidé de prendre des démarches pour tout simplement l’éliminer autant que possible. Nous l’avons fait en évitant de créer de nouveaux tableaux de pointeurs et de modifier ce qu’on avait déjà. C’est notamment visible dans la partie  "Vérifié présence de \textless , \textgreater" où nous modifions directement le tableau tokens à la place d’en créer un nouveau. Cela est sans parler des pointeurs et des relations pointeur sur pointeur avec lesquelles nous avons expérimenté de manière extensive et que nous pouvons dire que nous maîtrisons. 
+\subsubsection{Créer des processus} 
+Comment utiliser fork() et comprendre son lien avec les fonctions de type exec(). Une partie de son article que nous avons trouvée formidable est l’explication claire et détaillée de la procédure à suivre pour le fork(), de la manière dont il faut appeler l’exécution dans l’enfant et de la façon dont il faut prévenir les erreurs. Cela ne pouvait vraiment être plus explicite, nous nous sommes grandement inspirés de son code pour cette partie.
+\\
+
+À la suite de l’analyse de cette publication, nous avions maintenant la structure que nous voulions implémenter en tête. Nous avons rapidement pu faire le premier numéro, c’est-à-dire le "cat Makefile" sans rencontrer de difficultés majeures. 
+
+\subsection{Expansion d'arguments}
+Son code nous a beaucoup aidé pour la fondation du notre, mais le travail était loin d'être terminé car son code ne traitait pas l'expansion d'arguments. Initialement, nous pensions que l'expansion d'arguments ne fonctionnait qu'avec la commande echo qui imprimait le contenu du repertoire. À l'aide d'un code trouvé sur internet (\url{http://stackoverflow.com/questions/4204666/how-to-list-files-in-a-directory-in-a-c-program}) qui retourne le contenu du répertoire courant, nous avons remplacer l'astérisque par le contenu de notre répertoire. Nous avons donc traité ce cas séparément des autres en traitant différemment le cas spécifique où echo recevait * comme argument. Ensuite, nous avons compris que l'expansion d'argument était valable pour tous les commandes et non seulement echo. Il fallait alors changer de stratégie, nous avons tenté de procéder par concaténation de tableaux (tableau avant astérisque, tableau du contenu du répertoire et tableau après l'astérisque), mais ça a échoué misérablement. En comprenant d'avantage le fonctionnement des pointeurs et la représentation des tableaux en mémoire, nous avons décidé de procéder différement et modifier directement le tableau sur lequel nous travaillons au lieu de travailler sur multiples tableaux. La méthode était simple, parcourir le tableau de tokens au complet et lorsqu'on rencontre l'argument *, placer ce qui vient après dans un tableau temporaire et placer les fichiers du repertoire courant comme argument dans le tableau, ensuite replacer les valeurs que nous avons stocker de côté et cette méthode marchait parfaitement.
+\subsection{Redirection d'entrée/sortie}
+Pour les commandes de redirection, nous avons utilisé le même concept que celui qu'on a employé pour l'expansion d'arguments. Nous avons parcouru le tableau de tokens déjà créé, lorsque nous sommes tombé sur l'argument \textless ou \textgreater, nous avons supprimer cette commande et la commande qui la suit. Et dans le cas du \textless, nous avons interchangé le stdin avec l'argument qui venait après \textless, et pour l'autre cas, nous avons ouvert un nouveau fichier sous le nom de l'argument qui venait  juste après le > et avons interchangé le stdout avec ce fichier. Une fois ces changements fait, nous avons supprimé ces 2 arguments de notre tableau de tokens en decalant son contenu à partir du signe de redirection jusqu'à la fin de 2 et écrasant de la sorte ces 2 arguments.
+
+\subsection{Pipes}
+Le "pipe" est un concept qui a été difficile à assimiler. Le comprendre sommairement est très différent de l’implémenter. C’est la partie que nous avons trouvé de loin la plus ardue à implémenter, même si le code pour y arriver est relativement court. Il a fallu trois modifications, parfois des réécritures totales pour arriver à gérer un seul pipe. Pour le premier essai, nous l’avons fait dans le style de la page suivante: \url{http://stackoverflow.com/questions/876605/multiple-child-process}. La première problématique était de diviser tokens (notre tableau d’entrées) selon le nombre de pipes que nous avions à gérer et mettant chacune de ces parties dans un tableau appelé tokenspipe qui se trouvait dans les enfants. Avec les allocations et les réallocations mélangés à l’implémentation du fork() qui s’avérait assez complexe du à la gestion du nombre d’enfants et du nombre de pipes, nous ne sommes pas arrivés à voir l’erreur tout de suite et nous avons procédé à éliminer toutes ces allocations en donnant à tokenspipe la grandeur de tokens que nous savions qu’il ne dépasserait jamais, car il est en fait composé que d’une partie de ce dernier. Cela a réglé notre "segmentation fault", mais notre code n’affichait toujours rien, pourtant les pipes étaient bien appliquées avec dup2. Nous nous sommes rendu compte, après quelques heures de tests et réflexion, que c’était parce qu’en suivant ce type de modèle, les enfants ne s’exécutaient pas de manière séquentielle comme il le fallait pour le fonctionnement adéquat de la démarche. C’était décevant suite au fait que nous avions passé beaucoup de temps à mettre au point un système capable de gérer plusieurs pipes d’affilée et que finalement ce n’était tout simplement pas le plan à suivre. La troisième modification est basée sur twopipes.c de la page suivante: \url{http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html}. C’est à ce moment qu’on a découvert la nature récursive de l’implémentation du pipe du Shell en C. Prenons par exemple le cas d’un seul pipe. Nous savions clairement qu’il y aurait deux enfants nécessaires, mais dans quel ordre les créer? Où mettre en attente le parent? La réponse à cette question nous est venue en expérimentant les différentes possibilités et en s’inspirant le page mentionnée plus haut. La nature récursive vient du fait qu’il est nécessaire de faire un fork(), dans l’enfant de ce fork() en faire un autre, en faisant attendre le parent. L’exécution de la commande gauche du pipe se fait dans l’enfant du deuxième fork() et la partie droite dans son parent qui n’attend pas, chose que nous ne sommes pas habitués de voir. En résume ça donne fork(), enfant fork() encore et parent attend, le deuxième enfant exec la commande gauche, le deuxième parent exec la commande droite. Nous remarquons bien le modèle récursif à suivre.
+
+\section{Optimisation}
+Notre code fonctionnait bien pour la majorité des fonctions, toutefois on sentait qu'on faisait plusieurs vérification qui chacune parcourait le tableau de tokens qu'on avait créé pour voir si il y'avait présence de pipe, commande de redirection ou d'astérisque et qu'il y avait surement une façon plus optimale de le faire. C'est alors que nous avons décidé de faire les vérifications directement en générant le token avant même de l'insérer dans le tableau, plutôt que de le faire une fois le tableau complet. Et c'est ainsi qu'on procéda, on vérifiait directement, cela nous sauvait le coût de reparcourir le tableau plusieurs fois pour vérifier la présence des différents cas, et en plus ça nous permettait d'insérer directement dans notre tableau que les arguments pertinents et omettre ceux qui doivent être retirés.
+
+\subsection{Peaufinement}
+Pour donner une allure identique au terminal normal, nous avons affiché le répertoire courant avant d'entrée une commande. Pour ce faire, nous avons utilisé la fonction getcwd() et l'implémentation donnée sur ce site : \url{http://www.qnx.com/developers/docs/660/index.jsp?topic=%2Fcom.qnx.doc.neutrino.lib_ref%2Ftopic%2Fg%2Fgetcwd.html}. 
+
+Nous avons jugé que c'était nécessaire de rajouter cette entrée puisque nous avons implémenter le cd dans notre shell, c'est plus facile pour la navigation lorsqu'on sait dans quel répertoire on se trouve.
+
+\section{Références}
+Nous nous sommes beaucoup inspirés de plusieurs codes venant d'internet, car on l'apprend vite dans la vie qu'en programmation, faut pas toujours tout refaire de zéro si quelque chose existe déjà. Mais bien entendu il faut citer lorsqu'on prend du code de quelqu'un et c'est ce que nous faisons dans cette section.
+
+\subsubsection*{Imprimer le répertoire courant (getcwd)}
+ \url{http://www.qnx.com/developers/docs/660/index.jsp?topic=%2Fcom.qnx.doc.neutrino.lib_ref%2Ftopic%2Fg%2Fgetcwd.html}
+\subsubsection*{Parser la ligne et pointer vers les commandes} \url{http://stephen-brennan.com/2015/01/16/write-a-shell-in-c/}
+\subsubsection*{Afficher le contenu dun repertoire}
+\url{http://stackoverflow.com/questions/4204666/how-to-list-files-in-a-directory-in-a-c-program}
+
+\subsubsection*{Redirection d'entrée/sortie}
+\url{http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/redirect.c}
+
+\subsubsection*{Les Pipes}
+\url{http://stackoverflow.com/questions/9041796/having-issues-with-pipe-fork-dup2}
+\end{document}
